@@ -1,0 +1,47 @@
+Classement Général (Leaderboard)
+Cette page serait accessible à tous et montrerait les meilleurs joueurs de tous les temps. C'est le "Hall of Fame" de votre jeu.
+
+On pourrait y trouver plusieurs catégories pour récompenser différents types de joueurs :
+
+Le Panthéon des Champions : Un top 3, 5 ou 10 des joueurs avec le plus de parties gagnées. C'est le classement principal.
+
+Le Maître des Points : Un classement des joueurs ayant accumulé le plus de points au total, toutes parties confondues. Cela récompense la fidélité et la participation.
+
+Les Spécialistes par Mode de Jeu : Des mentions honorifiques pour les meilleurs dans chaque domaine :
+
+"Le Roi du Buzzer" pour le joueur avec le plus de bonnes réponses en mode "Massacre à la Sonnette".
+
+"Le Maître de la Prudence" pour celui qui a accumulé le plus de points en mode "Stop ou la Gaffe".
+
+"Le Cerveau" pour celui avec le meilleur ratio de bonnes réponses en mode "Remue-Méninges".
+
+📊 Statistiques Personnelles
+Chaque joueur pourrait avoir sa propre page de statistiques, accessible en entrant son pseudo. Cela lui permettrait de suivre sa progression.
+
+On pourrait y afficher :
+
+Résumé de Carrière :
+
+Nombre de parties jouées
+
+Pourcentage de victoires
+
+Score total accumulé
+
+Meilleur score en une seule partie
+
+Analyse par Mode de Jeu :
+
+Son mode de jeu préféré (celui où il a marqué le plus de points).
+
+Son point faible (le mode où il a le moins bon ratio).
+
+Collection de Trophées / Succès 🏅: Une section amusante où le joueur débloque des succès pour des hauts faits, par exemple :
+
+"Première Victoire !"
+
+"Invincible" (Gagner une partie sans jamais avoir eu une mauvaise réponse).
+
+"Le Comeback" (Gagner une partie après avoir été dernier).
+
+"Collectionneur" (Avoir découvert tous les easter eggs).

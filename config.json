@@ -1,0 +1,44 @@
+{
+    "game_title": "Quiz Night Arena",
+    "admin_password": "",
+    "qr_logo_path": "/static/img/logo.png",
+    "tts_default_on": false,
+    "game_modes": {
+        "simple": "Le Remue-Méninges",
+        "buzzer": "Le Massacre à la Sonnette",
+        "intrus": "Stop ou la Gaffe"
+    },
+    "easter_eggs": {
+        "tyson": true,
+        "lorie": true,
+        "corine": true,
+        "oceane": true,
+        "dimitri": true,
+        "jc": true,
+        "marie": true
+    },
+    "active_themes": {
+        "simples": [],
+        "intrus": []
+    },
+    "game_rules": {
+        "questions_per_player_simple": 2,
+        "questions_total_buzzer": 5,
+        "questions_per_player_intrus": 1,
+        "questions_total_estimation": 5
+    },
+    "music_default_on": false,
+    "game_modes_enabled": {
+        "simple": true,
+        "buzzer": false,
+        "intrus": true,
+        "estimation": false
+    },
+    "points_config": {
+        "simple": 10,
+        "buzzer": 10,
+        "intrus": 50,
+        "estimation_perfect": 150,
+        "estimation_close": 100
+    }
+}

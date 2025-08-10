@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Manette du Joueur</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+        .dark body {
+            background-color: #020617;
+            color: #f3f4f6;
+        }
+        .card {
+            background-color: white; border: 3px solid #111827; border-radius: 0.75rem;
+            box-shadow: 6px 6px 0 0 #111827; transition: all 0.2s ease-in-out;
+        }
+        .dark .card {
+            background-color: #1e293b; border-color: #475569;
+            box-shadow: 6px 6px 0 0 #000;
+        }
+        .btn-primary {
+            border: 3px solid #111827; border-radius: 0.75rem;
+            box-shadow: 5px 5px 0 0 #111827; transition: all 0.15s ease-in-out;
+            font-weight: 700;
+        }
+        .dark .btn-primary { border-color: #475569; box-shadow: 5px 5px 0 0 #000; }
+        .btn-primary:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0 0 #111827; }
+        .dark .btn-primary:hover { box-shadow: 3px 3px 0 0 #000; }
+        .btn-primary:active { transform: translate(5px, 5px); box-shadow: 0 0 0 0 #111827; }
+        .dark .btn-primary:active { box-shadow: 0 0 0 0 #000; }
+        .input-field {
+            border: 3px solid #111827; border-radius: 0.75rem; background-color: white; padding: 1rem;
+        }
+        .dark .input-field { background-color: #334155; border-color: #475569; color: white; }
+        .avatar-select { border: 4px solid transparent; transition: all 0.2s; cursor: pointer; padding: 2px; border-radius: 9999px; }
+        .avatar-select.selected { border-color: #111827; transform: scale(1.15); }
+        .dark .avatar-select.selected { border-color: #f3f4f6; }
+        .avatar-sewing-border { border: 3px dashed #E91E63; }
+        .avatar-belt-border { padding: 3px; background: linear-gradient(45deg, #FFD700, #F0A500, #B8860B, #FFD700); }
+        .avatar-shield-border { border-radius: 9999px; padding: 2px; background-color: #966F33; border: 3px solid #7B8A8B; }
+        .avatar-ring-border { border-radius: 9999px; padding: 2px; border: 2px solid #3b82f6; box-shadow: 0 0 0 2px white, 0 0 0 4px #ef4444; }
+        .avatar-bark-border { border-radius: 9999px; padding: 2px; background: #8B4513; border: 3px solid #5C4033; }
+        .avatar-platinum-border { padding: 3px; background: linear-gradient(45deg, #e5e7eb, #d1d5db, #9ca3af, #e5e7eb); }
+        .champion-name { font-weight: 900; color: #d4af37; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+        .player-turn { background-color: #dbeafe; }
+        .dark .player-turn { background-color: #334155; }
+        .special-name { font-weight: bold; background: linear-gradient(90deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000); background-size: 200% auto; color: #000; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: textclip 2s linear infinite; }
+        @keyframes textclip { to { background-position: 200% center; } }
+        #feedback-overlay { position: fixed; inset: 0; z-index: 100; animation: fade-out 1.5s forwards; }
+        @keyframes fade-out { 0% { opacity: 0.9; } 80% { opacity: 0.9; } 100% { opacity: 0; } }
+        .buzzer { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 6px 6px 0 0 #991b1b; } 70% { box-shadow: 6px 6px 0 20px rgba(153, 27, 27, 0); } 100% { box-shadow: 6px 6px 0 0 #991b1b; } }
+        .spinner { width: 56px; height: 56px; border: 5px solid #e5e7eb; border-bottom-color: #4f46e5; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
+        .dark .spinner { border-color: #374151; border-bottom-color: #818cf8; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .reaction-popup { animation: fade-and-slide 3.5s ease-out forwards; min-width: 150px; text-align: center; }
+        @keyframes fade-and-slide { 0% { opacity: 1; transform: translateX(100%); } 15% { opacity: 1; transform: translateX(0); } 85% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(100%); } }
+        .star-burst { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 8rem; color: #ffd700; animation: burst-anim 1.5s ease-out forwards; pointer-events: none; z-index: 100; }
+        @keyframes burst-anim { 0% { transform: translate(-50%, -50%) scale(0.2) rotate(0deg); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1.5) rotate(180deg); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(0.5) rotate(360deg); opacity: 0; } }
+    </style>
+</head>
+<body class="text-gray-900 dark:text-gray-100 {{ seasonal_theme or '' }}">
+    <button id="theme-toggle" class="fixed top-4 right-4 z-50 p-2 rounded-full bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-500">
+        <svg id="theme-toggle-sun" class="w-6 h-6 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+        <svg id="theme-toggle-moon" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+    </button>
+    
+    <div id="star-burst-container"></div>
+    <div id="feedback-overlay" class="hidden"></div>
+    <div id="reaction-popup-container" class="fixed bottom-24 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+    <div id="app" class="min-h-screen flex flex-col items-stretch">
+        
+        <header id="players-header" class="hidden bg-white dark:bg-slate-900 border-b-4 border-black dark:border-slate-600 relative z-20">
+            <div class="flex justify-between items-center w-full px-4 py-3">
+                <button id="toggle-players-btn" class="font-bold p-2 flex items-center gap-2">
+                    Joueurs
+                    <svg id="arrow-down" class="w-5 h-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                </button>
+            </div>
+            <div id="players-list-container" class="hidden absolute top-full left-0 right-0 bg-white dark:bg-slate-900 border-b-4 border-l-4 border-r-4 border-black dark:border-slate-600 p-4 shadow-lg rounded-b-xl max-h-56 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 z-20">
+            </div>
+        </header>
+
+        <main class="flex-grow flex flex-col items-center justify-center p-4 text-center">
+            
+            <div id="player-room-browser" class="w-full max-w-sm">
+                <h1 class="text-6xl font-black mb-6">QUIZ</h1>
+                <div class="card p-8">
+                    <h2 class="text-xl font-bold mb-4">Salles Disponibles</h2>
+                    <div id="player-room-list" class="space-y-3 mb-6 max-h-40 overflow-y-auto">
+                        <p class="text-gray-500 dark:text-gray-400">Aucune salle active...</p>
+                    </div>
+                    <label for="room-code-input" class="block mb-2 font-bold text-gray-800 dark:text-gray-200">Entrez un code</label>
+                    <input type="text" id="room-code-input" class="input-field w-full text-2xl uppercase text-center tracking-widest font-bold" placeholder="ABCD" maxlength="4">
+                    <button id="next-to-join-btn" class="w-full mt-6 btn-primary bg-yellow-300 text-black py-4 text-xl">Suivant</button>
+                </div>
+            </div>
+            
+            <div id="join-screen" class="hidden w-full max-w-sm">
+                <h1 class="text-6xl font-black mb-6">PROFIL</h1>
+                <div class="card p-8">
+                    <label for="player-name" class="block mb-2 font-bold text-gray-800 dark:text-gray-200">Votre Nom</label>
+                    <input type="text" id="player-name" class="input-field w-full text-lg mb-6" placeholder="Pseudo...">
+                    <label class="block mb-4 font-bold text-gray-800 dark:text-gray-200">Votre Avatar</label>
+                    <div id="avatar-grid" class="grid grid-cols-2 gap-4 mb-8"></div>
+                    <button id="join-btn" class="w-full bg-green-400 text-black py-4 text-xl btn-primary">Rejoindre la Partie</button>
+                    <p id="error-message" class="text-red-600 font-bold mt-4 h-4"></p>
+                </div>
+            </div>
+
+            <div id="wait-screen" class="hidden w-full max-w-sm text-center">
+                <div class="spinner mb-6"></div>
+                <h2 id="welcome-message" class="text-3xl font-bold"></h2>
+                <p class="text-xl text-gray-600 dark:text-gray-400 mt-2 mb-8">En attente du lancement...</p>
+                <div class="card p-4">
+                    <h3 class="text-xl font-bold mb-3">Joueurs Connectés</h3>
+                    <div id="wait-screen-players-list" class="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                    </div>
+                </div>
+            </div>
+            
+            <div id="player-game-screen" class="hidden w-full max-w-md"></div>
+
+            <div id="end-screen-player" class="hidden">
+                <h2 id="end-message" class="text-5xl font-bold mb-8">Partie terminée !</h2>
+                <button id="restart-btn" class="w-full max-w-sm btn-primary bg-yellow-300 text-black py-4 text-xl">
+                    Retour au menu
+                </button>
+            </div>
+        </main>
+
+        <footer class="relative flex justify-center items-center gap-4 p-4">
+            <div id="emoji-panel" class="hidden absolute bottom-full mb-2">
+                <div class="card bg-white dark:bg-slate-800 p-3 grid grid-cols-6 gap-2">
+                </div>
+            </div>
+            <button id="react-btn" class="btn-primary bg-white dark:bg-slate-700 text-3xl px-4 py-2">😊</button>
+            <button id="fart-btn" class="btn-primary bg-pink-400 text-black px-4 py-2 hidden">rot</button>
+            <button id="sew-btn" class="btn-primary bg-pink-300 text-black px-4 py-2 hidden">Coudre</button>
+            <button id="chair-btn" class="btn-primary bg-gray-300 text-black px-4 py-2 hidden">Chaise</button>
+            <button id="axe-btn" class="btn-primary bg-amber-600 text-white px-4 py-2 hidden">Hache !</button>
+            <button id="punch-btn" class="btn-primary bg-blue-600 text-white px-4 py-2 hidden">Jab !</button>
+            <button id="branch-btn" class="btn-primary bg-green-600 text-white px-4 py-2 hidden">Bourgeon</button>
+        </footer>
+    </div>
+
+    <audio id="fart-audio" src="/static/sounds/lorie.mp3" preload="auto"></audio>
+    <audio id="sewing-sound" src="/static/sounds/sewing.mp3" preload="auto"></audio>
+    <audio id="chair-hit-sound" src="/static/sounds/chair-hit.mp3" preload="auto"></audio>
+    <audio id="axe-clash-sound" src="/static/sounds/axe-clash.mp3" preload="auto"></audio>
+    <audio id="punch-bell-sound" src="/static/sounds/punch-bell.mp3" preload="auto"></audio>
+    <audio id="growing-branch-sound" src="/static/sounds/growing-branch.mp3" preload="auto"></audio>
+    <audio id="wrestling-bell-sound" src="/static/sounds/wrestling-bell.mp3" preload="auto"></audio>
+    <audio id="war-horn-sound" src="/static/sounds/war-horn.mp3" preload="auto"></audio>
+    <audio id="rocky-theme-sound" src="/static/sounds/rocky-theme.mp3" preload="auto"></audio>
+    <audio id="i-am-groot-sound" src="/static/sounds/i-am-groot.mp3" preload="auto"></audio>
+
+    <script>
+        (() => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const sunIcon = document.getElementById('theme-toggle-sun');
+            const moonIcon = document.getElementById('theme-toggle-moon');
+            const applyTheme = (theme) => {
+                document.documentElement.className = ''; document.body.className = "text-gray-900 dark:text-gray-100 {{ seasonal_theme or '' }}";
+                sunIcon.classList.add('hidden'); moonIcon.classList.add('hidden');
+                if (theme === 'dark') { document.documentElement.classList.add('dark'); sunIcon.classList.remove('hidden'); } 
+                else if (theme === 'vaporwave') { document.documentElement.classList.add('vaporwave'); moonIcon.classList.remove('hidden'); }
+                else { moonIcon.classList.remove('hidden'); }
+            };
+            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            let clickTimestamps = [];
+            const themes = ['light', 'dark'];
+            if (localStorage.getItem('vaporwave_unlocked')) themes.push('vaporwave');
+            let currentThemeIndex = themes.indexOf(savedTheme);
+            if (currentThemeIndex === -1) currentThemeIndex = 0;
+            applyTheme(savedTheme);
+            themeToggle.addEventListener('click', () => {
+                const now = Date.now();
+                clickTimestamps.push(now);
+                clickTimestamps = clickTimestamps.filter(ts => now - ts < 1500);
+                if (clickTimestamps.length >= 5) {
+                    clickTimestamps = [];
+                    if (!themes.includes('vaporwave')) { themes.push('vaporwave'); localStorage.setItem('vaporwave_unlocked', 'true'); }
+                    currentThemeIndex = themes.indexOf('vaporwave');
+                } else {
+                    currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+                }
+                const newTheme = themes[currentThemeIndex];
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+        })();
+
+        const socket = io();
+        const EMOJI_LIST = ['😂', '👍', '🤯', '❤️', '🔥', '👏', '🤔', '😭', '😮', '🎉', '🙏', '💯'];
+        const AVATARS_FOR_SELECTION = Array.from({length: 8}, (_, i) => `/static/avatars/avatar${(i + 1).toString().padStart(2, '0')}.png`);
+        const ALL_AVATARS = Array.from({length: 13}, (_, i) => `/static/avatars/avatar${(i + 1).toString().padStart(2, '0')}.png`);
+        
+        const screens = { 
+            roomBrowser: document.getElementById('player-room-browser'), 
+            join: document.getElementById('join-screen'), 
+            wait: document.getElementById('wait-screen'), 
+            game: document.getElementById('player-game-screen'), 
+            end: document.getElementById('end-screen-player') 
+        };
+
+        const fartBtn = document.getElementById('fart-btn');
+        const sewBtn = document.getElementById('sew-btn');
+        const chairBtn = document.getElementById('chair-btn');
+        const axeBtn = document.getElementById('axe-btn');
+        const punchBtn = document.getElementById('punch-btn');
+        const branchBtn = document.getElementById('branch-btn');
+        const joinBtn = document.getElementById('join-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const nextToJoinBtn = document.getElementById('next-to-join-btn');
+        const togglePlayersBtn = document.getElementById('toggle-players-btn');
+        const reactBtn = document.getElementById('react-btn');
+        const emojiPanel = document.getElementById('emoji-panel');
+        const playersHeader = document.getElementById('players-header');
+        const playersListContainer = document.getElementById('players-list-container');
+        const playerNameInput = document.getElementById('player-name');
+        const roomCodeInput = document.getElementById('room-code-input');
+        const errorMessage = document.getElementById('error-message');
+        const feedbackOverlay = document.getElementById('feedback-overlay');
+        
+        let selectedAvatarId = 0;
+        let CURRENT_ROOM = '';
+        let localPlayerState = {};
+
+        function getSoundForPlayer(player) {
+            if (player.has_belt_border) return 'wrestling-bell';
+            if (player.has_shield_border) return 'war-horn';
+            if (player.has_ring_border) return 'rocky-theme';
+            if (player.has_bark_border) return 'i-am-groot';
+            return null;
+        }
+
+        function replaySound(soundName) {
+            if (!soundName) return;
+            const soundId = soundName + '-sound';
+            const soundElement = document.getElementById(soundId);
+            if (soundElement) {
+                soundElement.currentTime = 0;
+                soundElement.play();
+            }
+        }
+
+        function renderWaitScreenPlayerList(players) {
+            const container = document.getElementById('wait-screen-players-list');
+            if (!container) return;
+            container.innerHTML = players.map(p => {
+                const soundName = getSoundForPlayer(p);
+                const clickableClass = soundName ? 'cursor-pointer hover:scale-105 transition-transform' : '';
+                const clickAction = soundName ? `onclick="replaySound('${soundName}')"` : '';
+                return `
+                    <div class="flex items-center gap-2 p-2 bg-gray-100 dark:bg-slate-700 rounded-lg border-2 border-black dark:border-slate-600 ${clickableClass}" ${clickAction}>
+                        <div class="relative ${p.is_champion_tyson ? 'avatar-platinum-border rounded-full' : ''} ${p.has_belt_border ? 'avatar-belt-border rounded-full' : ''} ${p.has_shield_border ? 'avatar-shield-border' : ''} ${p.has_ring_border ? 'avatar-ring-border' : ''} ${p.has_bark_border ? 'avatar-bark-border' : ''}">
+                            <img src="${ALL_AVATARS[p.avatar_id] || ALL_AVATARS[0]}" class="w-10 h-10 rounded-full object-cover border-2 border-black dark:border-slate-400 ${p.has_sewing_border ? 'avatar-sewing-border' : ''}">
+                        </div>
+                        <span class="font-semibold truncate ${p.is_champion_tyson ? 'champion-name' : ''}">${p.name}</span>
+                    </div>
+                `;
+            }).join('') || '<p class="col-span-2 text-gray-500 dark:text-gray-400">En attente d\\\'autres joueurs...</p>';
+        }
+
+        function showScreen(screenName) { Object.values(screens).forEach(screen => screen.classList.add('hidden')); if (screens[screenName]) screens[screenName].classList.remove('hidden'); }
+        function sendReaction(emoji) { socket.emit('player_reaction', { room_id: CURRENT_ROOM, emoji: emoji }); emojiPanel.classList.add('hidden'); }
+        function unlockAudio() { document.querySelectorAll('audio').forEach(audio => { audio.play().catch(()=>{}); audio.pause(); audio.currentTime = 0; }); }
+        function clearLocalStorage() { localStorage.removeItem('playerToken'); localStorage.removeItem('playerRoom'); }
+        function sendAnswer(index, useMultiplier = false) { socket.emit('player_answer', { room_id: CURRENT_ROOM, answer_index: index, use_multiplier: useMultiplier }); disableGameButtons(); }
+        function sendBuzz() { socket.emit('player_buzz', { room_id: CURRENT_ROOM }); disableGameButtons(); }
+        function sendStopOrEncore(choice) { socket.emit('player_stop_or_encore', { room_id: CURRENT_ROOM, choice: choice }); disableGameButtons(); }
+        function disableGameButtons() { document.querySelectorAll('#player-game-screen button').forEach(btn => { btn.disabled = true; btn.classList.add('opacity-70'); }); }
+
+        function initializeEmojiMenu() {
+            const emojiGrid = emojiPanel.querySelector('.grid');
+            emojiGrid.innerHTML = EMOJI_LIST.map(emoji => `<button class="text-3xl p-2 rounded-lg transition-transform hover:bg-gray-200 dark:hover:bg-slate-700 hover:scale-125" onclick="sendReaction('${emoji}')">${emoji}</button>`).join('');
+        }
+
+        function initJoinScreen() {
+            const avatarGrid = document.getElementById('avatar-grid');
+            avatarGrid.innerHTML = AVATARS_FOR_SELECTION.map((url, i) => `<div class="avatar-select p-1 rounded-full ${i === 0 ? 'selected' : ''}" data-id="${i}"><img src="${url}" alt="Avatar ${i+1}" class="w-full h-full rounded-full object-cover"></div>`).join('');
+            avatarGrid.querySelectorAll('.avatar-select').forEach(el => { el.addEventListener('click', () => { avatarGrid.querySelector('.selected')?.classList.remove('selected'); el.classList.add('selected'); selectedAvatarId = parseInt(el.dataset.id); }); });
+            const roomFromUrl = new URLSearchParams(window.location.search).get('room');
+            if (roomFromUrl) { roomCodeInput.value = roomFromUrl.toUpperCase(); nextToJoinBtn.click(); }
+        }
+
+        function renderPlayerList(state) {
+            if (!state || !state.players) return;
+            const sortedPlayers = [...state.players].sort((a, b) => b.score - a.score);
+            playersListContainer.innerHTML = sortedPlayers.filter(p => !p.is_disconnected).map((p, index) => `<div class="flex items-center gap-3 p-2 rounded-lg transition-all duration-300 ${p.sid === state.players[state.current_player_index]?.sid ? 'player-turn' : ''}" style="--player-color: ${p.color};"><div class="relative rounded-full ${p.is_champion_tyson ? 'avatar-platinum-border rounded-full' : ''} ${p.has_sewing_border ? 'avatar-sewing-border' : ''} ${p.has_belt_border ? 'avatar-belt-border' : ''} ${p.has_shield_border ? 'avatar-shield-border' : ''} ${p.has_ring_border ? 'avatar-ring-border' : ''} ${p.has_bark_border ? 'avatar-bark-border' : ''}"><img src="${ALL_AVATARS[p.avatar_id] || ALL_AVATARS[0]}" class="w-10 h-10 rounded-full"></div><div class="text-left"><p class="font-bold truncate ${p.is_champion_tyson ? 'champion-name' : ''}">${p.name}</p><p class="text-sm font-semibold">${p.score} pts</p></div></div>`).join('');
+        }
+        
+        function renderView(view, data, state) {
+            const playerGameScreen = document.getElementById('player-game-screen');
+            if (state) {
+                renderPlayerList(state);
+                const me = state.players.find(p => p.sid === socket.id);
+                if (me) localPlayerState = me;
+                fartBtn.classList.toggle('hidden', !me || !me.has_fart_button);
+                sewBtn.classList.toggle('hidden', !me || !me.has_sewing_button);
+                chairBtn.classList.toggle('hidden', !me || !me.has_chair_button);
+                axeBtn.classList.toggle('hidden', !me || !me.has_axe_button);
+                punchBtn.classList.toggle('hidden', !me || !me.has_punch_button);
+                branchBtn.classList.toggle('hidden', !me || !me.has_branch_button);
+            }
+            showScreen('game');
+            let contentHTML = '';
+            switch(view) {
+                case 'wait':
+                    const themeWait = data.question && data.question.theme ? `<p class="font-bold mb-2 text-lg text-gray-600 dark:text-gray-400">${data.question.theme}</p>` : '';
+                    const questionWait = data.question ? `<h2 class="text-2xl font-bold mb-6">${data.question.question}</h2>` : '';
+                    contentHTML = `<div class="card p-8">${themeWait}${questionWait}<div class="text-2xl font-bold">${data.message || 'En attente...'}</div></div>`;
+                    break;
+                case 'buzzer':
+                    const qBuzzer = data.question;
+                    const themeBuzzer = qBuzzer.theme ? `<p class="font-bold mb-2 text-lg text-gray-600 dark:text-gray-400">${qBuzzer.theme}</p>` : '';
+                    const questionBuzzer = `<h2 class="text-2xl font-bold mb-6">${qBuzzer.question}</h2>`;
+                    const hasAnswered = state.buzzer_has_answered && state.buzzer_has_answered.includes(socket.id);
+                    const buzzerBtn = `<button onclick="sendBuzz()" class="buzzer btn-primary w-52 h-52 ${hasAnswered ? 'bg-gray-400' : 'bg-red-500'} rounded-full flex items-center justify-center text-5xl font-black shadow-[8px_8px_0_0_#991b1b]" ${hasAnswered ? 'disabled' : ''}>BUZZ</button>`;
+                    contentHTML = `<div class="card p-8 flex flex-col items-center">${themeBuzzer}${questionBuzzer}${buzzerBtn}</div>`;
+                    break;
+                case 'question':
+                    const qData = data.question;
+                    const isMyTurn = data.is_my_turn;
+                    const theme = qData.theme ? `<p class="font-bold mb-2 text-lg text-gray-600 dark:text-gray-400">${qData.theme}</p>` : '';
+                    const question = `<h2 class="text-2xl font-bold mb-6">${qData.question}</h2>`;
+                    contentHTML = `<div class="card p-6">${theme}${question}<div class="grid grid-cols-1 gap-4">${qData.reponses.map((ans, i) => { const isDisabled = !isMyTurn || (data.revealed && data.revealed.includes(i)); const clickAction = `sendAnswer(${i}, false)`; const letter = String.fromCharCode(65 + i); return `<div><button class="btn-primary flex items-center w-full p-4 text-left text-lg ${isDisabled ? 'bg-gray-300 dark:bg-gray-600' : 'bg-white dark:bg-slate-700 hover:bg-yellow-200 dark:hover:bg-indigo-500'}" ${isDisabled ? 'disabled' : ''} onclick="${clickAction}"><span class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-yellow-300 dark:bg-indigo-600 dark:text-white border-2 border-black dark:border-slate-400 rounded-md font-bold mr-4">${letter}</span><span class="font-bold">${ans.texte}</span></button>${localPlayerState && localPlayerState.has_multiplier && isMyTurn && !isDisabled ? `<button class="btn-primary w-full p-3 mt-2 text-base bg-amber-400" onclick="sendAnswer(${i}, true)">Utiliser Score x2</button>` : ''}</div>`; }).join('')}</div></div>`;
+                    break;
+                case 'stop_or_encore':
+                    contentHTML = `<div class="card p-8"><h2 class="text-3xl font-bold mb-4">Bravo !</h2><p class="text-xl mb-6">Vous avez accumulé <span class="font-bold text-green-500 text-2xl">${data.points_accumulated}</span> points.</p><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><button class="btn-primary w-full p-4 text-lg bg-green-400" onclick="sendStopOrEncore('stop')">Valider mes Points</button><button class="btn-primary w-full p-4 text-lg bg-yellow-300" onclick="sendStopOrEncore('encore')">Tenter plus !</button></div></div>`;
+                    break;
+                case 'estimation':
+                    const qEst = data.question;
+                    contentHTML = `
+                        <div class="card p-6">
+                            <h2 class="text-2xl font-bold mb-4">${qEst.question}</h2>
+                            <p class="text-gray-600 dark:text-gray-400 mb-6">(Unité : ${qEst.unite})</p>
+                            <form id="estimation-form" class="flex gap-2">
+                                <input type="number" id="estimation-input" class="input-field flex-grow" placeholder="Votre estimation...">
+                                <button type="submit" class="btn-primary bg-green-400 text-black px-6">Valider</button>
+                            </form>
+                        </div>`;
+                    break;
+            }
+            playerGameScreen.innerHTML = contentHTML;
+
+            if (view === 'estimation') {
+                const form = document.getElementById('estimation-form');
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const input = document.getElementById('estimation-input');
+                    if (input.value) {
+                        socket.emit('player_estimation', { room_id: CURRENT_ROOM, value: input.value });
+                        disableGameButtons();
+                        form.innerHTML = '<p class="text-xl font-bold">Réponse envoyée !</p>';
+                    }
+                });
+            }
+        }
+
+        socket.on('connect', () => { const token = localStorage.getItem('playerToken'); const room = localStorage.getItem('playerRoom'); if (token && room) { CURRENT_ROOM = room; socket.emit('reconnect_player', { token: token, room_id: room }); } else { showScreen('roomBrowser'); initJoinScreen(); } });
+        socket.on('update_room_list', (data) => { const playerRoomList = document.getElementById('player-room-list'); if (Object.keys(data.rooms).length === 0 || !Object.values(data.rooms).some(room => !room.is_started)) { playerRoomList.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Aucune salle active...</p>`; } else { playerRoomList.innerHTML = Object.entries(data.rooms).filter(([id, room]) => !room.is_started).map(([id, room]) => `<button class="w-full text-left bg-gray-200 dark:bg-slate-700 hover:bg-yellow-200 dark:hover:bg-indigo-600 border-2 border-black dark:border-slate-500 p-3 rounded-lg flex justify-between items-center transition" onclick="selectRoom('${id}')"><span class="font-bold text-lg">Salle ${id}</span><span>${room.player_count} Joueur(s)</span></button>`).join(''); } });
+        socket.on('reconnect_success', (data) => { showScreen('wait'); document.getElementById('welcome-message').textContent = `Re-bonjour, ${data.name} !`; });
+        socket.on('reconnect_fail', () => { clearLocalStorage(); showScreen('roomBrowser'); initJoinScreen(); });
+        socket.on('error', (data) => { errorMessage.textContent = data.message; });
+        socket.on('joined_successfully', (data) => { localStorage.setItem('playerToken', data.token); localStorage.setItem('playerRoom', data.room_id); showScreen('wait'); document.getElementById('welcome-message').textContent = `Bienvenue, ${data.name} !`; });
+        socket.on('update_player_view', (data) => { playersHeader.classList.remove('hidden'); renderView(data.view, data.data, data.state); });
+        socket.on('answer_feedback', (data) => { feedbackOverlay.classList.remove('hidden'); feedbackOverlay.style.backgroundColor = data.correct ? 'rgba(74, 222, 128, 0.9)' : 'rgba(239, 68, 68, 0.9)'; setTimeout(() => feedbackOverlay.classList.add('hidden'), 1500); });
+        socket.on('update_state', (state) => { if (!state.game_started) { renderWaitScreenPlayerList(state.players); } });
+        socket.on('play_sound', (data) => { const soundId = data.sound + "-sound"; const soundElement = document.getElementById(soundId); if (soundElement) { soundElement.currentTime = 0; soundElement.play().catch(e => console.log("Le navigateur a bloqué la lecture auto.")); } });
+        socket.on('show_reaction', (data) => { if (localPlayerState.name === data.player_name) return; const container = document.getElementById('reaction-popup-container'); if (!container) return; const popup = document.createElement('div'); popup.className = 'reaction-popup card p-2 border-2 border-black dark:border-slate-500'; popup.innerHTML = `<span class="font-bold">${data.player_name}:</span> <span class="text-2xl">${data.emoji}</span>`; container.appendChild(popup); setTimeout(() => { popup.remove(); }, 3500); });
+        socket.on('champion_joined', () => { const container = document.getElementById('star-burst-container'); const star = document.createElement('div'); star.className = 'star-burst'; star.textContent = '⭐'; container.appendChild(star); setTimeout(() => { star.remove(); }, 1500); });
+        socket.on('end_game', () => { playersHeader.classList.add('hidden'); showScreen('end'); });
+        socket.on('you_were_kicked', (data) => { document.getElementById('end-message').textContent = data.reason || "Vous avez été exclu."; playersHeader.classList.add('hidden'); showScreen('end'); });
+        socket.on('room_closed', (data) => { document.getElementById('end-message').textContent = data.reason || "La salle a été fermée."; playersHeader.classList.add('hidden'); showScreen('end'); });
+
+        joinBtn.addEventListener('click', () => { unlockAudio(); clearLocalStorage(); const name = playerNameInput.value.trim(); if (name && CURRENT_ROOM && selectedAvatarId !== null) { socket.emit('join_game', { room_id: CURRENT_ROOM, name: name, avatar_id: selectedAvatarId }); } else { errorMessage.textContent = 'Veuillez remplir tous les champs.'; } });
+        restartBtn.addEventListener('click', () => { clearLocalStorage(); window.location.reload(); });
+        togglePlayersBtn.addEventListener('click', () => { playersListContainer.classList.toggle('hidden'); document.getElementById('arrow-down').classList.toggle('rotate-180'); });
+        nextToJoinBtn.addEventListener('click', () => { unlockAudio(); const room = roomCodeInput.value.trim().toUpperCase(); if (room) { CURRENT_ROOM = room; showScreen('join'); } else { alert("Veuillez sélectionner une salle ou entrer un code."); } });
+        reactBtn.addEventListener('click', (event) => { event.stopPropagation(); emojiPanel.classList.toggle('hidden'); });
+        document.addEventListener('click', (event) => { if (emojiPanel && reactBtn && !emojiPanel.contains(event.target) && !reactBtn.contains(event.target)) { emojiPanel.classList.add('hidden'); } });
+
+        fartBtn.addEventListener('click', () => socket.emit('play_fart_sound', { room_id: CURRENT_ROOM }));
+        sewBtn.addEventListener('click', () => socket.emit('play_sewing_effect', { room_id: CURRENT_ROOM }));
+        chairBtn.addEventListener('click', () => socket.emit('play_chair_effect', { room_id: CURRENT_ROOM }));
+        axeBtn.addEventListener('click', () => socket.emit('play_berserker_cry', { room_id: CURRENT_ROOM }));
+        punchBtn.addEventListener('click', () => socket.emit('play_punch_effect', { room_id: CURRENT_ROOM }));
+        branchBtn.addEventListener('click', () => socket.emit('play_branch_effect', { room_id: CURRENT_ROOM }));
+
+        initializeEmojiMenu();
+    </script>
+</body>
+</html>

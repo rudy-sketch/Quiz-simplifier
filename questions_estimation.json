@@ -1,0 +1,32 @@
+[
+    {
+        "question": "En quelle année le premier iPhone a-t-il été commercialisé ?",
+        "reponse": 2007,
+        "tolerance": 2,
+        "unite": "année"
+    },
+    {
+        "question": "Quelle est la hauteur de la Tour Eiffel en mètres (antennes incluses) ?",
+        "reponse": 330,
+        "tolerance": 15,
+        "unite": "mètres"
+    },
+    {
+        "question": "Combien de films composent la saga 'Harry Potter' ?",
+        "reponse": 8,
+        "tolerance": 0,
+        "unite": "films"
+    },
+    {
+        "question": "Quelle est la vitesse de la lumière dans le vide (en milliers de km/s) ?",
+        "reponse": 300,
+        "tolerance": 20,
+        "unite": "milliers de km/s"
+    },
+    {
+        "question": "Combien de touches compte un piano standard ?",
+        "reponse": 88,
+        "tolerance": 5,
+        "unite": "touches"
+    }
+]

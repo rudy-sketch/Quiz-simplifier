@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiques - {{ game_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6;
+            color: #111827;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .dark body {
+            background-color: #020617;
+            color: #f3f4f6;
+        }
+        .card {
+            background-color: white; border: 3px solid #111827; border-radius: 1rem;
+            box-shadow: 8px 8px 0 0 #111827;
+        }
+        .dark .card {
+            background-color: #1e293b; border-color: #475569;
+            box-shadow: 8px 8px 0 0 #000;
+        }
+        .btn-primary {
+            border: 3px solid #111827; border-radius: 0.75rem;
+            box-shadow: 5px 5px 0 0 #111827; transition: all 0.15s ease-in-out;
+            font-weight: 700;
+        }
+        .dark .btn-primary { border-color: #475569; box-shadow: 5px 5px 0 0 #000; }
+        .btn-primary:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0 0 #111827; }
+        .dark .btn-primary:hover { box-shadow: 3px 3px 0 0 #000; }
+        .btn-primary:active { transform: translate(5px, 5px); box-shadow: 0 0 0 0 #111827; }
+        .dark .btn-primary:active { box-shadow: 0 0 0 0 #000; }
+        .btn-secondary { background-color: #e5e7eb; color: black; padding: 0.75rem 1.5rem; }
+        .dark .btn-secondary { background-color: #374151; color: white; }
+        .input-field {
+            border: 3px solid #111827; border-radius: 0.75rem; background-color: white; padding: 1rem;
+        }
+        .dark .input-field { background-color: #334155; border-color: #475569; color: white; }
+    </style>
+</head>
+<body class="text-gray-900 dark:text-gray-100 {{ seasonal_theme or '' }}">
+    <button id="theme-toggle" class="fixed top-4 right-4 z-50 p-2 rounded-full border-2 border-black dark:border-white">
+        </button>
+
+    <div class="container mx-auto p-4 md:p-8 pt-20 md:pt-8">
+        <h1 class="text-5xl md:text-6xl font-black text-center mb-8">{{ game_title }}</h1>
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Classements & Statistiques</h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="card p-6">
+                <h3 class="text-2xl md:text-3xl font-bold mb-4">🏆 Panthéon des Champions</h3>
+                <div class="space-y-3">
+                    {% for player in leaderboards.most_wins %}
+                    <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-700 p-3 rounded-lg border-2 border-black dark:border-slate-600">
+                        <span class="font-bold text-lg">{{ loop.index }}. {{ player.name }}</span>
+                        <span class="font-bold text-xl text-yellow-500">{{ player.wins }} Victoires</span>
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 dark:text-gray-400">Aucune donnée de victoire pour le moment.</p>
+                    {% endfor %}
+                </div>
+
+                <h3 class="text-2xl md:text-3xl font-bold mb-4 mt-8">🔥 Maîtres des Points</h3>
+                 <div class="space-y-3">
+                    {% for player in leaderboards.highest_score %}
+                    <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-700 p-3 rounded-lg border-2 border-black dark:border-slate-600">
+                        <span class="font-bold text-lg">{{ loop.index }}. {{ player.name }}</span>
+                        <span class="font-bold text-xl text-indigo-500">{{ player.total_score }} Pts</span>
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 dark:text-gray-400">Aucune donnée de score pour le moment.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <h3 class="text-2xl md:text-3xl font-bold mb-4">📊 Mes Statistiques</h3>
+                <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                    <input type="text" id="stats-player-name" class="input-field flex-grow" placeholder="Entrez votre pseudo exact...">
+                    <button id="search-stats-btn" class="btn-primary bg-green-400 text-black px-6">Chercher</button>
+                </div>
+                <div id="player-stats-result">
+                    <p class="text-gray-500 dark:text-gray-400">Entrez un pseudo pour voir vos stats.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-6 mt-8">
+            <h3 class="text-2xl md:text-3xl font-bold mb-6 text-center">🏆 Les Spécialistes par Mode de Jeu</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <h4 class="text-xl md:text-2xl font-bold mb-3 text-center">🧠 Le Cerveau</h4>
+                    {% for player in leaderboards.specialist_simple %}
+                    <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-700 p-3 rounded-lg border-2 border-black dark:border-slate-600 mb-2">
+                        <span class="font-semibold">{{ loop.index }}. {{ player.name }}</span>
+                        <span class="font-bold text-blue-500">{{ player.score_simple or 0 }} Pts</span>
+                    </div>
+                    {% else %}<p class="text-gray-500 dark:text-gray-400">Aucune donnée.</p>{% endfor %}
+                </div>
+                <div>
+                    <h4 class="text-xl md:text-2xl font-bold mb-3 text-center">⚡️ Le Roi du Buzzer</h4>
+                    {% for player in leaderboards.specialist_buzzer %}
+                    <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-700 p-3 rounded-lg border-2 border-black dark:border-slate-600 mb-2">
+                        <span class="font-semibold">{{ loop.index }}. {{ player.name }}</span>
+                        <span class="font-bold text-red-500">{{ player.score_buzzer or 0 }} Pts</span>
+                    </div>
+                    {% else %}<p class="text-gray-500 dark:text-gray-400">Aucune donnée.</p>{% endfor %}
+                </div>
+                <div>
+                    <h4 class="text-xl md:text-2xl font-bold mb-3 text-center">🕵️ Le Maître de la Prudence</h4>
+                    {% for player in leaderboards.specialist_intrus %}
+                    <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-700 p-3 rounded-lg border-2 border-black dark:border-slate-600 mb-2">
+                        <span class="font-semibold">{{ loop.index }}. {{ player.name }}</span>
+                        <span class="font-bold text-green-500">{{ player.score_intrus or 0 }} Pts</span>
+                    </div>
+                    {% else %}<p class="text-gray-500 dark:text-gray-400">Aucune donnée.</p>{% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-12 flex flex-wrap justify-center items-center gap-4">
+            <a href="/" class="btn-primary btn-secondary">Accueil</a>
+            <a href="/changelog" class="btn-primary btn-secondary">Nouveautés</a>
+            <a href="/history" class="btn-primary btn-secondary">Historique</a>
+            <a href="/admin" target="_blank" class="btn-primary btn-secondary">Admin</a>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const sunIcon = document.getElementById('theme-toggle-sun');
+            const moonIcon = document.getElementById('theme-toggle-moon');
+            const applyTheme = (theme) => {
+                document.documentElement.className = '';
+                document.body.className = "text-gray-900 dark:text-gray-100 {{ seasonal_theme or '' }}";
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                } else if (theme === 'vaporwave') {
+                    document.documentElement.classList.add('vaporwave');
+                    moonIcon.classList.remove('hidden');
+                } else {
+                    moonIcon.classList.remove('hidden');
+                    sunIcon.classList.add('hidden');
+                }
+            };
+            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            let clickTimestamps = [];
+            const themes = ['light', 'dark'];
+            if (localStorage.getItem('vaporwave_unlocked')) themes.push('vaporwave');
+            let currentThemeIndex = themes.indexOf(savedTheme);
+            if (currentThemeIndex === -1) currentThemeIndex = 0;
+            applyTheme(savedTheme);
+            themeToggle.addEventListener('click', () => {
+                const now = Date.now();
+                clickTimestamps.push(now);
+                clickTimestamps = clickTimestamps.filter(ts => now - ts < 1500);
+                if (clickTimestamps.length >= 5) {
+                    clickTimestamps = [];
+                    if (!themes.includes('vaporwave')) {
+                        themes.push('vaporwave');
+                        localStorage.setItem('vaporwave_unlocked', 'true');
+                    }
+                    currentThemeIndex = themes.indexOf('vaporwave');
+                } else {
+                    currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+                }
+                const newTheme = themes[currentThemeIndex];
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+        })();
+
+        const socket = io();
+        const searchBtn = document.getElementById('search-stats-btn');
+        const nameInput = document.getElementById('stats-player-name');
+        const resultDiv = document.getElementById('player-stats-result');
+
+        searchBtn.addEventListener('click', () => {
+            const name = nameInput.value.trim();
+            if (name) {
+                socket.emit('get_player_stats', { name: name });
+            }
+        });
+
+        nameInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+
+        socket.on('player_stats_response', (data) => {
+            if (data.stats) {
+                const stats = data.stats;
+                resultDiv.innerHTML = `
+                    <div class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border-2 border-black dark:border-slate-600">
+                        <h4 class="text-2xl font-bold mb-4">${stats.name}</h4>
+                        <ul class="space-y-2 text-left text-lg">
+                            <li><strong>Parties Jouées :</strong> ${stats.games_played}</li>
+                            <li><strong>Victoires :</strong> ${stats.wins}</li>
+                            <li><strong>Score Total :</strong> ${stats.total_score}</li>
+                            <li><strong>Meilleur Score :</strong> ${stats.best_score}</li>
+                        </ul>
+                        <h5 class="text-xl font-bold mt-6 mb-2">Trophées Débloqués 🏅</h5>
+                        <div class="flex flex-wrap gap-2">
+                            ${stats.trophies.length > 0 ? stats.trophies.map(t => `<span class="bg-yellow-200 text-yellow-800 font-semibold px-3 py-1 rounded-full">${t}</span>`).join('') : '<p class="text-gray-500 dark:text-gray-400">Aucun trophée pour le moment.</p>'}
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `<p class="text-red-500 font-semibold">${data.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

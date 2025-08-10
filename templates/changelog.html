@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouveautés - {{ game_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+        .dark body {
+            background-color: #020617;
+            color: #f3f4f6;
+        }
+        .card {
+            background-color: white; border: 3px solid #111827; border-radius: 1rem;
+            box-shadow: 8px 8px 0 0 #111827;
+        }
+        .dark .card {
+            background-color: #1e293b; border-color: #475569;
+            box-shadow: 8px 8px 0 0 #000;
+        }
+        .btn-primary {
+            border: 3px solid #111827; border-radius: 0.75rem;
+            box-shadow: 5px 5px 0 0 #111827; transition: all 0.15s ease-in-out;
+            font-weight: 700;
+        }
+        .dark .btn-primary { border-color: #475569; box-shadow: 5px 5px 0 0 #000; }
+        .btn-primary:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0 0 #111827; }
+        .dark .btn-primary:hover { box-shadow: 3px 3px 0 0 #000; }
+        .btn-primary:active { transform: translate(5px, 5px); box-shadow: 0 0 0 0 #111827; }
+        .dark .btn-primary:active { box-shadow: 0 0 0 0 #000; }
+        .btn-secondary { background-color: #e5e7eb; color: black; padding: 0.75rem 1.5rem; }
+        .dark .btn-secondary { background-color: #374151; color: white; }
+
+        /* Styles de la Timeline */
+        .timeline {
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .timeline::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            background-color: #cbd5e1;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -3px;
+        }
+        .dark .timeline::after {
+            background-color: #475569;
+        }
+        .timeline-item {
+            padding: 10px 40px;
+            position: relative;
+            background-color: inherit;
+            width: 50%;
+        }
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            right: -17px;
+            background-color: white;
+            border: 4px solid #60a5fa;
+            top: 25px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        .dark .timeline-item::after {
+            background-color: #334155;
+            border-color: #60a5fa;
+        }
+        .timeline-left {
+            left: 0;
+        }
+        .timeline-right {
+            left: 50%;
+        }
+        .timeline-right::after {
+            left: -16px;
+        }
+        .timeline-content {
+            position: relative;
+        }
+        @media screen and (max-width: 768px) {
+            .timeline::after {
+                left: 31px;
+            }
+            .timeline-item {
+                width: 100%;
+                padding-left: 70px;
+                padding-right: 25px;
+            }
+            .timeline-item::after {
+                left: 15px;
+            }
+            .timeline-right {
+                left: 0%;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-900 dark:text-gray-100">
+    <button id="theme-toggle" class="fixed top-4 right-4 z-50 p-2 rounded-full border-2 border-black dark:border-white">
+        </button>
+
+    <div class="container mx-auto p-4 md:p-8 pt-20 md:pt-8">
+        <h1 class="text-5xl md:text-6xl font-black text-center mb-8">{{ game_title }}</h1>
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-12 md:mb-16">Nouveautés & Mises à jour</h2>
+
+        <div class="timeline">
+            {% for entry in entries %}
+            <div class="timeline-item {% if loop.index is odd %}timeline-left{% else %}timeline-right{% endif %}">
+                <div class="timeline-content card p-6">
+                    <div class="flex items-center gap-4 mb-2">
+                        <span class="timeline-icon text-3xl"></span>
+                        <h3 class="text-2xl font-bold">{{ entry.title }}</h3>
+                    </div>
+                    <p class="font-semibold text-gray-500 dark:text-gray-400 mb-4 ml-12">{{ entry.date }}</p>
+                    <div class="changelog-text text-gray-700 dark:text-gray-300 ml-12">{{ entry.content }}</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="w-full text-center">
+                <div class="card p-8 inline-block">
+                    <p class="text-xl text-gray-500">Aucune nouveauté pour le moment !</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-12 flex flex-wrap justify-center items-center gap-4">
+            <a href="/" class="btn-primary btn-secondary">Accueil</a>
+            <a href="/stats" class="btn-primary btn-secondary">Classement</a>
+            <a href="/history" class="btn-primary btn-secondary">Historique</a>
+            <a href="/admin" target="_blank" class="btn-primary btn-secondary">Admin</a>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const sunIcon = document.getElementById('theme-toggle-sun');
+            const moonIcon = document.getElementById('theme-toggle-moon');
+            const applyTheme = (theme) => {
+                document.documentElement.className = '';
+                document.body.className = "text-gray-900 dark:text-gray-100 {{ seasonal_theme or '' }}";
+
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                } else if (theme === 'vaporwave') {
+                    document.documentElement.classList.add('vaporwave');
+                    moonIcon.classList.remove('hidden');
+                } else { // light
+                    moonIcon.classList.remove('hidden');
+                    sunIcon.classList.add('hidden');
+                }
+            };
+            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            applyTheme(savedTheme);
+
+            themeToggle.addEventListener('click', () => {
+                const themes = ['light', 'dark'];
+                if(localStorage.getItem('vaporwave_unlocked')) themes.push('vaporwave');
+                
+                let currentThemeIndex = themes.indexOf(localStorage.getItem('theme'));
+                if(currentThemeIndex === -1) currentThemeIndex = 0;
+
+                const newTheme = themes[(currentThemeIndex + 1) % themes.length];
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+        })();
+    </script>
+</body>
+</html>

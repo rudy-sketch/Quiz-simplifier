@@ -1,0 +1,32 @@
+[
+    {
+        "date": "07/08/2025 21:42",
+        "room_id": "EGJR",
+        "winner": "test",
+        "players": [
+            {
+                "name": "test",
+                "score": 0
+            },
+            {
+                "name": "Tyson",
+                "score": 0
+            }
+        ]
+    },
+    {
+        "date": "04/08/2025 22:28",
+        "room_id": "OLMI",
+        "winner": "rudy",
+        "players": [
+            {
+                "name": "rudy",
+                "score": 100
+            },
+            {
+                "name": "Dimitri",
+                "score": 60
+            }
+        ]
+    }
+]

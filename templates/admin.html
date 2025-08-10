@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - {{ game_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style> 
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+        .dark body {
+            background-color: #020617;
+            color: #f3f4f6;
+        }
+        .card {
+            background-color: white; border: 3px solid #111827; border-radius: 1rem;
+            box-shadow: 8px 8px 0 0 #111827;
+        }
+        .dark .card {
+            background-color: #1e293b;
+            border-color: #475569;
+            box-shadow: 8px 8px 0 0 #000;
+        }
+        .input-field {
+            border: 3px solid #111827; border-radius: 0.75rem; background-color: white;
+            padding: 0.75rem; width: 100%; font-weight: 600;
+        }
+        .dark .input-field {
+             background-color: #334155; border-color: #475569; color: white;
+        }
+        .btn {
+            border: 3px solid #111827; border-radius: 0.75rem;
+            box-shadow: 5px 5px 0 0 #111827; transition: all 0.15s ease-in-out;
+            font-weight: 700; padding: 0.75rem 1rem;
+        }
+        .dark .btn { border-color: #475569; box-shadow: 5px 5px 0 0 #000; }
+        .btn:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0 0 #111827; }
+        .dark .btn:hover { box-shadow: 3px 3px 0 0 #000; }
+        .btn:active { transform: translate(5px, 5px); box-shadow: 0 0 0 0 #111827; }
+        .dark .btn:active { box-shadow: 0 0 0 0 #000; }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-secondary { background-color: #e5e7eb; color: black; }
+        .dark .btn-secondary { background-color: #374151; color: white; }
+        .btn-red { background-color: #ef4444; color: white; }
+        .btn-green { background-color: #22c55e; color: white; }
+        .btn-yellow { background-color: #f59e0b; color: white; }
+        .nav-tab {
+            padding: 0.5rem 1rem; border-bottom: 4px solid transparent;
+            transition: all 0.2s; font-weight: 700; font-size: 1.125rem;
+        }
+        .nav-tab.active { border-color: #111827; }
+        .dark .nav-tab.active { border-color: #f3f4f6; }
+        #edit-modal { background-color: rgba(0,0,0,0.7); }
+        .toggle-switch { width: 60px; height: 34px; position: relative; display: inline-block; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #22c55e; }
+        input:checked + .slider:before { transform: translateX(26px); }
+    </style>
+</head>
+<body class="text-gray-900 dark:text-gray-100">
+
+    <button id="theme-toggle" class="fixed top-4 right-4 z-50 p-2 rounded-full border-2 border-black dark:border-white">
+        <svg id="theme-toggle-sun" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+        <svg id="theme-toggle-moon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+    </button>
+
+    <div id="app" class="container mx-auto p-4 md:p-8">
+
+        <div id="login-screen" class="max-w-md mx-auto mt-20">
+            <div class="card p-8 text-center">
+                <h1 class="text-4xl font-black mb-6">ADMIN</h1>
+                <input type="password" id="admin-password" class="input-field mb-4 text-center" placeholder="Mot de passe">
+                <button id="login-btn" class="w-full btn btn-primary text-lg">Connexion</button>
+                <p id="error-message" class="text-red-600 font-bold mt-4 h-4"></p>
+            </div>
+        </div>
+
+        <div id="admin-panel" class="hidden">
+            <h1 id="admin-title" class="text-5xl font-black mb-6 text-center">{{ game_title }}</h1>
+            
+            <div class="flex justify-center flex-wrap gap-4 mb-8 border-b-4 border-black dark:border-gray-600">
+                <button class="nav-tab active" data-page="accueil">Accueil</button>
+                <button class="nav-tab" data-page="questions">Questions</button>
+                <button class="nav-tab" data-page="nouveautes">Nouveautés</button>
+                <button class="nav-tab" data-page="statistiques">Statistiques</button>
+                <button class="nav-tab" data-page="historique">Historique</button>
+                <button class="nav-tab" data-page="configuration">Configuration</button>
+            </div>
+
+            <div id="page-accueil" class="admin-page">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                    <div class="card p-4 text-center">
+                        <h3 class="text-lg font-bold text-gray-600 dark:text-gray-400">Thèmes Simples</h3>
+                        <p id="stat-simple-themes" class="text-5xl font-black">0</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <h3 class="text-lg font-bold text-gray-600 dark:text-gray-400">Questions Simples</h3>
+                        <p id="stat-simple-questions" class="text-5xl font-black">0</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <h3 class="text-lg font-bold text-gray-600 dark:text-gray-400">Questions Intrus</h3>
+                        <p id="stat-intrus-questions" class="text-5xl font-black">0</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <h3 class="text-lg font-bold text-gray-600 dark:text-gray-400">Salles Actives</h3>
+                        <p id="stat-active-rooms" class="text-5xl font-black">0</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <h3 class="text-lg font-bold text-gray-600 dark:text-gray-400">Joueurs Connectés</h3>
+                        <p id="stat-total-players" class="text-5xl font-black">0</p>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h2 class="text-3xl font-bold mb-4">Salles Actives</h2>
+                    <div id="rooms-list" class="space-y-6"></div>
+                </div>
+            </div>
+
+            <div id="page-questions" class="admin-page hidden">
+                <div class="card p-6 mb-8">
+                    <h2 class="text-3xl font-bold mb-4">Gestion des Thèmes (Questions Simples)</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">Décochez les thèmes que vous ne souhaitez pas voir apparaître dans les parties. Si aucun thème n'est coché, tous les thèmes seront utilisés.</p>
+                    <div id="simple-themes-list" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="card p-6">
+                        <h2 class="text-2xl font-bold mb-4">Questions Simples</h2>
+                        <div id="questions-list-simples" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2"></div>
+                        <button class="btn bg-green-400 text-black mt-6 w-full" onclick="openEditModal('simple', null, null)">Ajouter une question simple</button>
+                    </div>
+                    <div class="card p-6">
+                        <h2 class="text-2xl font-bold mb-4">Questions 'L'Intrus'</h2>
+                        <div id="questions-list-intrus" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2"></div>
+                        <button class="btn bg-green-400 text-black mt-6 w-full" onclick="openEditModal('intrus', null, null)">Ajouter une question intrus</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="page-nouveautes" class="admin-page hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-1">
+                        <div class="card p-6">
+                            <h2 class="text-3xl font-bold mb-4">Ajouter une Nouveauté</h2>
+                            <form id="add-changelog-form" class="space-y-4">
+                                <div>
+                                    <label for="changelog-title" class="font-semibold block mb-1">Titre</label>
+                                    <input type="text" id="changelog-title" class="input-field" placeholder="Ex: Nouveau Design !">
+                                </div>
+                                <div>
+                                    <label for="changelog-content" class="font-semibold block mb-1">Description</label>
+                                    <textarea id="changelog-content" rows="4" class="input-field" placeholder="Décrivez les changements..."></textarea>
+                                </div>
+                                <button type="submit" class="w-full btn bg-green-400 text-black">Ajouter</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2">
+                         <div class="card p-6">
+                            <h2 class="text-3xl font-bold mb-4">Liste des Nouveautés</h2>
+                            <div id="changelog-list" class="space-y-4 max-h-[70vh] overflow-y-auto">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-statistiques" class="admin-page hidden">
+                <div class="card p-6">
+                    <h2 class="text-3xl font-bold mb-4">Éditer les Statistiques d'un Joueur</h2>
+                    <div class="flex gap-2 mb-6 max-w-lg mx-auto">
+                        <input type="text" id="stats-search-name" class="input-field flex-grow" placeholder="Pseudo exact du joueur...">
+                        <button id="stats-search-btn" class="btn btn-primary">Chercher</button>
+                    </div>
+                    <div id="stats-edit-form-container">
+                        <p class="text-center text-gray-500 dark:text-gray-400">Recherchez un joueur pour modifier ses statistiques.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-historique" class="admin-page hidden">
+                <div class="card p-6">
+                    <h2 class="text-3xl font-bold mb-4">Historique des Parties</h2>
+                    <div id="history-list" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <div id="page-configuration" class="admin-page hidden">
+                <div class="space-y-8">
+                    <div class="card p-6">
+                        <h2 class="text-3xl font-bold mb-4">Réglages Généraux</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="config-game-title" class="block mb-2 font-semibold">Titre du Jeu</label>
+                                <input type="text" id="config-game-title" class="input-field">
+                            </div>
+                            <div>
+                                <label for="config-music" class="block mb-2 font-semibold">Musique du lobby activée par défaut</label>
+                                <label class="toggle-switch"><input type="checkbox" id="config-music"><span class="slider"></span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h2 class="text-3xl font-bold mb-4">Noms des Modes de Jeu</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div><label class="block mb-1 font-semibold">Mode Simple</label><input type="text" id="config-mode-simple" class="input-field"></div>
+                            <div><label class="block mb-1 font-semibold">Mode Buzzer</label><input type="text" id="config-mode-buzzer" class="input-field"></div>
+                            <div><label class="block mb-1 font-semibold">Mode Intrus</label><input type="text" id="config-mode-intrus" class="input-field"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <h2 class="text-3xl font-bold mb-4">Modes de Jeu Actifs</h2>
+                        <div id="game-modes-enabled-form" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h2 class="text-3xl font-bold mb-4">Attribution des Points</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block mb-1 font-semibold">Mode Simple (par question)</label>
+                                <input type="number" id="points-simple" class="input-field" min="1">
+                            </div>
+                            <div>
+                                <label class="block mb-1 font-semibold">Mode Buzzer (par question)</label>
+                                <input type="number" id="points-buzzer" class="input-field" min="1">
+                            </div>
+                            <div>
+                                <label class="block mb-1 font-semibold">Mode Intrus (points de base)</label>
+                                <input type="number" id="points-intrus" class="input-field" min="1">
+                            </div>
+                            <div>
+                                <label class="block mb-1 font-semibold">Estimation (réponse parfaite)</label>
+                                <input type="number" id="points-estimation-perfect" class="input-field" min="1">
+                            </div>
+                            <div>
+                                <label class="block mb-1 font-semibold">Estimation (réponse proche)</label>
+                                <input type="number" id="points-estimation-close" class="input-field" min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h2 class="text-3xl font-bold mb-4">Règles de la Partie (Nombre de questions)</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div>
+                                <label for="rules-simple" class="block mb-2 font-semibold">Questions "Simples" (par joueur)</label>
+                                <input type="number" id="rules-simple" class="input-field" min="1">
+                            </div>
+                            <div>
+                                <label for="rules-buzzer" class="block mb-2 font-semibold">Questions "Buzzer" (total)</label>
+                                <input type="number" id="rules-buzzer" class="input-field" min="1">
+                            </div>
+                            <div>
+                                <label for="rules-intrus" class="block mb-2 font-semibold">Questions "Intrus" (par joueur)</label>
+                                <input type="number" id="rules-intrus" class="input-field" min="1">
+                            </div>
+                             <div>
+                                <label for="rules-estimation" class="block mb-2 font-semibold">Questions "Estimation" (total)</label>
+                                <input type="number" id="rules-estimation" class="input-field" min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h2 class="text-3xl font-bold mb-4">Gestion des Easter Eggs</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                           <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg"><input type="checkbox" data-eename="tyson" class="ee-cb w-6 h-6"><span class="font-semibold">Tyson</span></label>
+                           <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg"><input type="checkbox" data-eename="lorie" class="ee-cb w-6 h-6"><span class="font-semibold">Lorie</span></label>
+                           <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg"><input type="checkbox" data-eename="corine" class="ee-cb w-6 h-6"><span class="font-semibold">Corine</span></label>
+                           <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg"><input type="checkbox" data-eename="oceane" class="ee-cb w-6 h-6"><span class="font-semibold">Oceane</span></label>
+                           <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg"><input type="checkbox" data-eename="dimitri" class="ee-cb w-6 h-6"><span class="font-semibold">Dimitri</span></label>
+                           <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg"><input type="checkbox" data-eename="jc" class="ee-cb w-6 h-6"><span class="font-semibold">JC</span></label>
+                           <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg"><input type="checkbox" data-eename="marie" class="ee-cb w-6 h-6"><span class="font-semibold">Marie</span></label>
+                        </div>
+                    </div>
+                    <button id="save-config-btn" class="w-full btn btn-primary text-lg">Sauvegarder Toute la Configuration</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="edit-modal" class="fixed inset-0 hidden items-center justify-center z-50 p-4">
+            <div class="card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" id="edit-modal-content">
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        (() => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const sunIcon = document.getElementById('theme-toggle-sun');
+            const moonIcon = document.getElementById('theme-toggle-moon');
+            const applyTheme = (theme) => {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    moonIcon.classList.remove('hidden');
+                    sunIcon.classList.add('hidden');
+                }
+            };
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const currentTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+            applyTheme(currentTheme);
+            themeToggle.addEventListener('click', () => {
+                const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+        })();
+
+        const socket = io();
+        let currentQuestions = {};
+        let currentConfig = {};
+        let currentGameHistory = [];
+        let currentChangelogEntries = [];
+        
+        const loginScreen = document.getElementById('login-screen');
+        const adminPanel = document.getElementById('admin-panel');
+        const loginBtn = document.getElementById('login-btn');
+        const passwordInput = document.getElementById('admin-password');
+        const errorMessage = document.getElementById('error-message');
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const adminPages = document.querySelectorAll('.admin-page');
+        const saveConfigBtn = document.getElementById('save-config-btn');
+        const addChangelogForm = document.getElementById('add-changelog-form');
+
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                navTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const pageId = `page-${tab.dataset.page}`;
+                adminPages.forEach(page => page.classList.toggle('hidden', page.id !== pageId));
+            });
+        });
+
+        function renderDashboard(stats) {
+            document.getElementById('stat-simple-themes').textContent = stats.simple_themes_count;
+            document.getElementById('stat-simple-questions').textContent = stats.simple_questions_count;
+            document.getElementById('stat-intrus-questions').textContent = stats.intrus_questions_count;
+            document.getElementById('stat-active-rooms').textContent = stats.active_rooms_count;
+            document.getElementById('stat-total-players').textContent = stats.total_players_count;
+        }
+        
+        function renderRooms(gameStates) {
+            const roomsList = document.getElementById('rooms-list');
+            if (Object.keys(gameStates).length === 0) { roomsList.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Aucune salle active.</p>`; return; }
+            roomsList.innerHTML = Object.entries(gameStates).map(([roomId, state]) => `
+                <div class="p-4 rounded-lg bg-gray-100 dark:bg-slate-800 border-2 border-black dark:border-slate-600">
+                    <div class="flex justify-between items-center mb-3"><h3 class="text-xl font-bold">Salle: <span class="text-indigo-600">${roomId}</span> (${state.game_started ? 'En jeu' : 'Lobby'})</h3><div class="flex gap-2"><button class="btn bg-blue-500 text-white py-1 px-3 text-sm" onclick="forceNextRound('${roomId}')">Tour Suivant</button><button class="btn bg-red-500 text-white py-1 px-3 text-sm" onclick="deleteRoom('${roomId}')">Supprimer</button></div></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">${state.players.map(p => `<div class="bg-white dark:bg-slate-700 p-2 border-2 border-black dark:border-slate-500 rounded flex items-center justify-between ${p.is_disconnected ? 'opacity-50' : ''}"><div class="flex items-center gap-2 overflow-hidden"><img src="/static/avatars/avatar01.png" class="w-8 h-8 rounded-full"><span class="font-semibold truncate">${p.name} (${p.score})</span></div><button class="btn bg-red-600 text-white p-1 text-xs" onclick="kickPlayer('${roomId}', '${p.sid}')">X</button></div>`).join('') || '<p class="text-gray-500 dark:text-gray-400 col-span-full">Aucun joueur.</p>'}</div>
+                </div>`).join('');
+        }
+
+        function renderQuestions(questions, config) {
+            const listSimples = document.getElementById('questions-list-simples');
+            const listIntrus = document.getElementById('questions-list-intrus');
+            const themesContainer = document.getElementById('simple-themes-list');
+            const activeSimpleThemes = (config.active_themes && config.active_themes.simples) || [];
+            themesContainer.innerHTML = Object.keys(questions.questions_simples || {}).sort().map(theme => `
+                <label class="flex items-center gap-2 p-2 rounded-lg bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 cursor-pointer">
+                    <input type="checkbox" class="simple-theme-cb h-5 w-5" value="${theme}" ${!activeSimpleThemes.length || activeSimpleThemes.includes(theme) ? 'checked' : ''}>
+                    <span class="font-semibold">${theme}</span>
+                </label>
+            `).join('');
+            listSimples.innerHTML = Object.entries(questions.questions_simples || {}).sort().map(([theme, qList]) => `
+                <div>
+                    <h4 class="font-bold text-lg mb-1 mt-4">${theme}</h4>
+                    ${qList.map((q, i) => `
+                        <div class="bg-gray-100 dark:bg-slate-700 p-2 rounded flex items-center gap-2 ml-4 border-2 border-black dark:border-slate-600 ${q.active === false ? 'opacity-50' : ''}">
+                            <label class="toggle-switch">
+                                <input type="checkbox" class="toggle-status-btn" data-type="questions_simples" data-theme="${theme}" data-index="${i}" ${q.active !== false ? 'checked' : ''}>
+                                <span class="slider"></span>
+                            </label>
+                            <span class="flex-grow truncate">${q.question}</span>
+                            <button class="btn btn-yellow text-sm py-1 px-2" onclick="openEditModal('simple', '${theme}', ${i})">Mod</button>
+                            <button class="btn btn-red text-sm py-1 px-2" onclick="deleteQuestion('questions_simples', '${theme}', ${i})">X</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+            listIntrus.innerHTML = (questions.questions_intrus || []).map((q, i) => `
+                <div class="bg-gray-100 dark:bg-slate-700 p-2 rounded flex items-center gap-2 border-2 border-black dark:border-slate-600 ${q.active === false ? 'opacity-50' : ''}">
+                    <label class="toggle-switch">
+                        <input type="checkbox" class="toggle-status-btn" data-type="questions_intrus" data-index="${i}" ${q.active !== false ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
+                    <span class="flex-grow truncate">Thème : ${q.theme}</span>
+                    <button class="btn btn-yellow text-sm py-1 px-2" onclick="openEditModal('intrus', null, ${i})">Mod</button>
+                    <button class="btn btn-red text-sm py-1 px-2" onclick="deleteQuestion('questions_intrus', null, ${i})">X</button>
+                </div>
+            `).join('');
+        }
+
+        function renderHistory(history) {
+            const historyList = document.getElementById('history-list');
+            if (!history || history.length === 0) { historyList.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Aucun historique.</p>`; return; }
+            historyList.innerHTML = history.map((game, index) => `
+                <div class="bg-gray-100 dark:bg-slate-800 p-4 rounded-lg border-2 border-black dark:border-slate-600">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-bold">Partie du ${game.date} (Salle ${game.room_id})</h3>
+                        <div class="flex items-center gap-4">
+                            <p class="font-semibold">Gagnant: <span class="text-green-500">${game.winner}</span></p>
+                            <button class="btn btn-red text-white py-1 px-2 text-xs" onclick="deleteHistory(${index})">X</button>
+                        </div>
+                    </div>
+                    <ol class="list-decimal list-inside columns-2">${game.players.map(p => `<li>${p.name} - ${p.score} pts</li>`).join('')}</ol>
+                </div>`).join('');
+        }
+
+        function renderChangelog(entries) {
+            const list = document.getElementById('changelog-list');
+            if (!entries || entries.length === 0) { list.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Aucune nouveauté n'a été ajoutée.</p>`; return; }
+            list.innerHTML = entries.map((entry, index) => `
+                <div class="bg-gray-100 dark:bg-slate-700 p-4 rounded-lg border-2 border-black dark:border-slate-600">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                           <h3 class="text-xl font-bold">${entry.title}</h3>
+                           <span class="text-sm font-semibold text-gray-600 dark:text-gray-400">${entry.date}</span>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button class="btn btn-secondary text-sm p-1" onclick="moveChangelog(${index}, 'up')" ${index === 0 ? 'disabled' : ''}>▲</button>
+                            <button class="btn btn-secondary text-sm p-1" onclick="moveChangelog(${index}, 'down')" ${index === entries.length - 1 ? 'disabled' : ''}>▼</button>
+                            <button class="btn btn-yellow text-sm py-1 px-2" onclick="openChangelogEditModal('${entry.id}')">Mod</button>
+                            <button class="btn btn-red text-white py-1 px-2 text-xs" onclick="deleteChangelog('${entry.id}')">X</button>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">${entry.content}</p>
+                </div>`).join('');
+        }
+
+        function renderConfig(config) {
+            document.getElementById('config-game-title').value = config.game_title || 'Quiz Night Arena';
+            document.getElementById('config-music').checked = config.music_default_on || false;
+            document.getElementById('config-mode-simple').value = config.game_modes.simple || '';
+            document.getElementById('config-mode-buzzer').value = config.game_modes.buzzer || '';
+            document.getElementById('config-mode-intrus').value = config.game_modes.intrus || '';
+            
+            const modesEnabled = config.game_modes_enabled || {};
+            const modesContainer = document.getElementById('game-modes-enabled-form');
+            modesContainer.innerHTML = Object.entries(config.game_modes).map(([key, name]) => `
+                <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg">
+                    <input type="checkbox" data-modename="${key}" class="mode-cb w-6 h-6" ${modesEnabled[key] !== false ? 'checked' : ''}>
+                    <span class="font-semibold">${name}</span>
+                </label>
+            `).join('') + `
+                <label class="flex items-center gap-3 p-3 bg-gray-100 dark:bg-slate-700 border-2 border-black dark:border-slate-500 rounded-lg">
+                    <input type="checkbox" data-modename="estimation" class="mode-cb w-6 h-6" ${modesEnabled.estimation !== false ? 'checked' : ''}>
+                    <span class="font-semibold">Le Thermomètre</span>
+                </label>
+            `;
+
+            const points = config.points_config || {};
+            document.getElementById('points-simple').value = points.simple || 10;
+            document.getElementById('points-buzzer').value = points.buzzer || 10;
+            document.getElementById('points-intrus').value = points.intrus || 50;
+            document.getElementById('points-estimation-perfect').value = points.estimation_perfect || 150;
+            document.getElementById('points-estimation-close').value = points.estimation_close || 100;
+
+            const rules = config.game_rules || {};
+            document.getElementById('rules-simple').value = rules.questions_per_player_simple || 2;
+            document.getElementById('rules-buzzer').value = rules.questions_total_buzzer || 5;
+            document.getElementById('rules-intrus').value = rules.questions_per_player_intrus || 1;
+            document.getElementById('rules-estimation').value = rules.questions_total_estimation || 5;
+            
+            const eeSettings = config.easter_eggs || {};
+            document.querySelectorAll('.ee-cb').forEach(cb => {
+                cb.checked = eeSettings[cb.dataset.eename] !== false;
+            });
+        }
+        
+        function openEditModal(type, theme, index) {
+            const modal = document.getElementById('edit-modal');
+            const modalContent = document.getElementById('edit-modal-content');
+            let formHTML = '';
+            if (type === 'simple') {
+                const q = index !== null ? currentQuestions.questions_simples[theme][index] : null;
+                const isEditing = q !== null;
+                const correctAns = isEditing ? q.reponses.find(r => r.correcte).texte : '';
+                const wrongAns = isEditing ? q.reponses.filter(r => !r.correcte).map(r => r.texte) : ['', ''];
+                formHTML = `
+                    <h2 class="text-3xl font-bold mb-4">${isEditing ? 'Modifier' : 'Ajouter'} une Question Simple</h2>
+                    <form id="form-simple" data-editing="${isEditing}" data-theme="${theme || ''}" data-index="${index || ''}">
+                        <div class="space-y-3">
+                            <input type="text" id="edit-simple-theme" placeholder="Thème" class="input-field" value="${theme || ''}" required>
+                            <input type="text" id="edit-simple-question" placeholder="Question" class="input-field" value="${isEditing ? q.question : ''}" required>
+                            <input type="text" id="edit-simple-reponse-correcte" placeholder="Bonne réponse" class="input-field bg-green-100 dark:bg-green-900" value="${correctAns}" required>
+                            <input type="text" id="edit-simple-reponse-fausse1" placeholder="Mauvaise réponse 1" class="input-field bg-red-100 dark:bg-red-900" value="${wrongAns[0] || ''}" required>
+                            <input type="text" id="edit-simple-reponse-fausse2" placeholder="Mauvaise réponse 2" class="input-field bg-red-100 dark:bg-red-900" value="${wrongAns[1] || ''}" required>
+                        </div>
+                        <div class="flex gap-4 mt-6">
+                            <button type="button" class="w-full btn btn-secondary" onclick="closeEditModal()">Annuler</button>
+                            <button type="submit" class="w-full btn btn-primary">${isEditing ? 'Sauvegarder' : 'Ajouter'}</button>
+                        </div>
+                    </form>`;
+            } else if (type === 'intrus') {
+                const q = index !== null ? currentQuestions.questions_intrus[index] : null;
+                const isEditing = q !== null;
+                const intrusAns = isEditing ? q.reponses.find(r => r.intrus).texte : '';
+                const correctAns = isEditing ? q.reponses.filter(r => !r.intrus).map(r => r.texte) : Array(6).fill('');
+                formHTML = `
+                    <h2 class="text-3xl font-bold mb-4">${isEditing ? 'Modifier' : 'Ajouter'} une Question Intrus</h2>
+                    <form id="form-intrus" data-editing="${isEditing}" data-index="${index || ''}">
+                        <div class="space-y-3">
+                            <input type="text" id="edit-intrus-theme" placeholder="Thème" class="input-field" value="${isEditing ? q.theme : ''}" required>
+                            <input type="text" id="edit-intrus-intrus" placeholder="L'intrus" class="input-field bg-red-100 dark:bg-red-900" value="${intrusAns}" required>
+                            ${Array(6).fill(0).map((_, i) => `<input type="text" id="edit-intrus-correct${i+1}" placeholder="Bon mot ${i+1}" class="input-field bg-green-100 dark:bg-green-900" value="${correctAns[i] || ''}">`).join('')}
+                        </div>
+                        <div class="flex gap-4 mt-6">
+                            <button type="button" class="w-full btn btn-secondary" onclick="closeEditModal()">Annuler</button>
+                            <button type="submit" class="w-full btn btn-primary">${isEditing ? 'Sauvegarder' : 'Ajouter'}</button>
+                        </div>
+                    </form>`;
+            }
+            modalContent.innerHTML = formHTML;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        function openChangelogEditModal(id) {
+            const entry = currentChangelogEntries.find(e => e.id === id);
+            const modal = document.getElementById('edit-modal');
+            const modalContent = document.getElementById('edit-modal-content');
+            
+            const formHTML = `
+                <h2 class="text-3xl font-bold mb-4">Modifier la Nouveauté</h2>
+                <form id="form-edit-changelog" data-id="${id}">
+                    <div class="space-y-3">
+                        <input type="text" id="edit-changelog-title" placeholder="Titre" class="input-field" value="${entry.title}" required>
+                        <textarea id="edit-changelog-content" rows="5" class="input-field" required>${entry.content}</textarea>
+                    </div>
+                    <div class="flex gap-4 mt-6">
+                        <button type="button" class="w-full btn btn-secondary" onclick="closeEditModal()">Annuler</button>
+                        <button type="submit" class="w-full btn btn-primary">Sauvegarder</button>
+                    </div>
+                </form>`;
+            
+            modalContent.innerHTML = formHTML;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
+        function deleteQuestion(type, theme, index) { if (confirm('Supprimer cette question ?')) socket.emit('delete_question', { type, theme, index });}
+        function kickPlayer(roomId, playerSid) { if (confirm('Exclure ce joueur ?')) socket.emit('kick_player', { room_id: roomId, player_sid: playerSid }); }
+        function forceNextRound(roomId) { socket.emit('admin_force_next_round', { room_id: roomId }); }
+        function deleteRoom(roomId) { if (confirm(`Supprimer la salle ${roomId} ?`)) { socket.emit('admin_delete_room', { room_id: roomId }); } }
+        function deleteHistory(index) { if (confirm(`Voulez-vous vraiment supprimer cette partie de l'historique ?`)) { socket.emit('admin_delete_history', { index: index }); } }
+        function deleteChangelog(id) { if (confirm("Supprimer cette entrée ?")) { socket.emit('admin_delete_changelog', { id: id }); } }
+        function moveChangelog(index, direction) { socket.emit('admin_move_changelog', { index, direction }); }
+
+        loginBtn.addEventListener('click', () => socket.emit('admin_login', { password: passwordInput.value }));
+        passwordInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+        
+        saveConfigBtn.addEventListener('click', () => {
+            const fullConfig = {
+                game_title: document.getElementById('config-game-title').value,
+                music_default_on: document.getElementById('config-music').checked,
+                game_modes: {
+                    simple: document.getElementById('config-mode-simple').value,
+                    buzzer: document.getElementById('config-mode-buzzer').value,
+                    intrus: document.getElementById('config-mode-intrus').value,
+                },
+                game_modes_enabled: Array.from(document.querySelectorAll('.mode-cb')).reduce((acc, cb) => {
+                    acc[cb.dataset.modename] = cb.checked;
+                    return acc;
+                }, {}),
+                points_config: {
+                    simple: parseInt(document.getElementById('points-simple').value) || 10,
+                    buzzer: parseInt(document.getElementById('points-buzzer').value) || 10,
+                    intrus: parseInt(document.getElementById('points-intrus').value) || 50,
+                    estimation_perfect: parseInt(document.getElementById('points-estimation-perfect').value) || 150,
+                    estimation_close: parseInt(document.getElementById('points-estimation-close').value) || 100,
+                },
+                game_rules: {
+                    questions_per_player_simple: parseInt(document.getElementById('rules-simple').value) || 2,
+                    questions_total_buzzer: parseInt(document.getElementById('rules-buzzer').value) || 5,
+                    questions_per_player_intrus: parseInt(document.getElementById('rules-intrus').value) || 1,
+                    questions_total_estimation: parseInt(document.getElementById('rules-estimation').value) || 5,
+                },
+                easter_eggs: Array.from(document.querySelectorAll('.ee-cb')).reduce((acc, cb) => {
+                    acc[cb.dataset.eename] = cb.checked;
+                    return acc;
+                }, {})
+            };
+            socket.emit('admin_save_config', { config: fullConfig });
+        });
+        
+        addChangelogForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const titleInput = document.getElementById('changelog-title');
+            const contentInput = document.getElementById('changelog-content');
+            if (titleInput.value.trim() && contentInput.value.trim()) {
+                socket.emit('admin_add_changelog', { title: titleInput.value, content: contentInput.value });
+                titleInput.value = '';
+                contentInput.value = '';
+            } else { alert("Veuillez remplir le titre et la description."); }
+        });
+
+        socket.on('login_success', (data) => {
+            loginScreen.classList.add('hidden');
+            adminPanel.classList.remove('hidden');
+            currentQuestions = data.questions;
+            currentConfig = data.config;
+            currentGameHistory = data.game_history;
+            currentChangelogEntries = data.changelog;
+            renderDashboard(data.dashboard_stats);
+            renderRooms(data.game_states);
+            renderQuestions(data.questions, data.config);
+            renderHistory(data.game_history);
+            renderChangelog(data.changelog);
+            renderConfig(data.config);
+        });
+        socket.on('login_fail', () => { errorMessage.textContent = 'Mot de passe incorrect.'; });
+        socket.on('update_admin_view', (data) => { renderDashboard(data.dashboard_stats); renderRooms(data.game_states); renderHistory(data.game_history); });
+        socket.on('update_questions', (data) => { currentQuestions = data.questions; renderQuestions(data.questions, currentConfig); });
+        socket.on('update_changelog', (data) => { currentChangelogEntries = data.changelog; renderChangelog(data.changelog); });
+        socket.on('history_updated', (data) => { currentGameHistory = data.history; renderHistory(data.history); });
+        socket.on('config_saved_successfully', (data) => {
+            alert("Configuration sauvegardée !");
+            currentConfig = data.new_config;
+            document.getElementById('admin-title').textContent = currentConfig.game_title;
+        });
+        
+        document.getElementById('page-questions').addEventListener('change', e => {
+            if (e.target.classList.contains('toggle-status-btn')) {
+                const el = e.target;
+                socket.emit('admin_toggle_question_status', { type: el.dataset.type, theme: el.dataset.theme, index: parseInt(el.dataset.index), status: el.checked });
+            }
+            if (e.target.classList.contains('simple-theme-cb')) {
+                const themes = { simples: Array.from(document.querySelectorAll('.simple-theme-cb:checked')).map(cb => cb.value), intrus: (currentConfig.active_themes && currentConfig.active_themes.intrus) || [] };
+                currentConfig.active_themes = themes;
+                socket.emit('admin_save_config', { config: { active_themes: themes } });
+            }
+        });
+
+        document.getElementById('edit-modal').addEventListener('submit', e => {
+            e.preventDefault();
+            if (e.target.id === 'form-simple') {
+                const form = e.target;
+                const isEditing = form.dataset.editing === 'true';
+                const questionData = { question: document.getElementById('edit-simple-question').value, reponses: [ { texte: document.getElementById('edit-simple-reponse-correcte').value, correcte: true }, { texte: document.getElementById('edit-simple-reponse-fausse1').value, correcte: false }, { texte: document.getElementById('edit-simple-reponse-fausse2').value, correcte: false }, ] };
+                if (isEditing) {
+                    socket.emit('admin_update_question', { type: 'questions_simples', theme: form.dataset.theme, index: parseInt(form.dataset.index), new_data: questionData });
+                } else {
+                    socket.emit('add_question', { type: 'questions_simples', theme: document.getElementById('edit-simple-theme').value, question: questionData });
+                }
+            } else if (e.target.id === 'form-intrus') {
+                const form = e.target;
+                const isEditing = form.dataset.editing === 'true';
+                const correctAns = Array(6).fill(0).map((_, i) => document.getElementById(`edit-intrus-correct${i+1}`).value.trim()).filter(Boolean);
+                if (correctAns.length < 2) { alert("Veuillez fournir au moins 2 bonnes réponses."); return; }
+                const questionData = { theme: document.getElementById('edit-intrus-theme').value, reponses: [ { texte: document.getElementById('edit-intrus-intrus').value, intrus: true }, ...correctAns.map(txt => ({ texte: txt, intrus: false })) ] };
+                 if (isEditing) {
+                    socket.emit('admin_update_question', { type: 'questions_intrus', index: parseInt(form.dataset.index), new_data: questionData });
+                } else {
+                    socket.emit('add_question', { type: 'questions_intrus', question: questionData });
+                }
+            } else if (e.target.id === 'form-edit-changelog') {
+                const form = e.target;
+                socket.emit('admin_update_changelog', {
+                    id: form.dataset.id,
+                    title: document.getElementById('edit-changelog-title').value,
+                    content: document.getElementById('edit-changelog-content').value
+                });
+            }
+            closeEditModal();
+        });
+        
+        const statsSearchBtn = document.getElementById('stats-search-btn');
+        const statsSearchName = document.getElementById('stats-search-name');
+        const statsFormContainer = document.getElementById('stats-edit-form-container');
+        statsSearchBtn.addEventListener('click', () => { const playerName = statsSearchName.value.trim(); if(playerName) { socket.emit('admin_get_player_stats', { name: playerName }); } });
+        socket.on('admin_player_stats_response', (data) => {
+            if (data.stats) {
+                const s = data.stats;
+                statsFormContainer.innerHTML = `
+                    <form id="edit-stats-form" data-player-name="${s.name.toLowerCase()}">
+                        <h3 class="text-2xl font-bold mb-4">Édition de <span class="text-indigo-600">${s.name}</span></h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div><label class="font-semibold">Parties Jouées</label><input type="number" id="s_games_played" class="input-field" value="${s.games_played || 0}"></div>
+                            <div><label class="font-semibold">Victoires</label><input type="number" id="s_wins" class="input-field" value="${s.wins || 0}"></div>
+                            <div><label class="font-semibold">Score Total</label><input type="number" id="s_total_score" class="input-field" value="${s.total_score || 0}"></div>
+                            <div><label class="font-semibold">Meilleur Score</label><input type="number" id="s_best_score" class="input-field" value="${s.best_score || 0}"></div>
+                            <div><label class="font-semibold">Score Simple</label><input type="number" id="s_score_simple" class="input-field" value="${s.score_simple || 0}"></div>
+                            <div><label class="font-semibold">Score Buzzer</label><input type="number" id="s_score_buzzer" class="input-field" value="${s.score_buzzer || 0}"></div>
+                            <div><label class="font-semibold">Score Intrus</label><input type="number" id="s_score_intrus" class="input-field" value="${s.score_intrus || 0}"></div>
+                            <div><label class="font-semibold">Grands Chelems</label><input type="number" id="s_grand_slams" class="input-field" value="${s.grand_slams || 0}"></div>
+                            <div><label class="font-semibold">Victoires Tacticien</label><input type="number" id="s_tacticien_wins" class="input-field" value="${s.tacticien_wins || 0}"></div>
+                            <div><label class="font-semibold">Série Victoires Max</label><input type="number" id="s_max_win_streak" class="input-field" value="${s.max_win_streak || 0}"></div>
+                        </div>
+                        <div class="mt-6 text-center">
+                            <button type="submit" class="btn btn-green text-lg">Sauvegarder les Changements</button>
+                        </div>
+                    </form>
+                `;
+            } else { statsFormContainer.innerHTML = '<p class="text-center font-semibold text-red-500">Joueur non trouvé.</p>'; }
+        });
+        statsFormContainer.addEventListener('submit', (e) => {
+            if (e.target.id === 'edit-stats-form') {
+                e.preventDefault();
+                const playerName = e.target.dataset.playerName;
+                const newStats = { games_played: document.getElementById('s_games_played').value, wins: document.getElementById('s_wins').value, total_score: document.getElementById('s_total_score').value, best_score: document.getElementById('s_best_score').value, score_simple: document.getElementById('s_score_simple').value, score_buzzer: document.getElementById('s_score_buzzer').value, score_intrus: document.getElementById('s_score_intrus').value, grand_slams: document.getElementById('s_grand_slams').value, tacticien_wins: document.getElementById('s_tacticien_wins').value, max_win_streak: document.getElementById('s_max_win_streak').value };
+                socket.emit('admin_save_player_stats', { name: playerName, new_stats: newStats });
+            }
+        });
+        socket.on('stats_saved_successfully', () => { alert('Statistiques du joueur sauvegardées avec succès !'); });
+    </script>
+</body>
+</html>
